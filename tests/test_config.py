@@ -13,7 +13,7 @@ def test_app_settings_defaults():
 
 import pytest
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 
 
 def test_settings_loads_dev_yaml_by_default(monkeypatch):
@@ -54,3 +54,15 @@ def test_settings_switches_to_prod_env(monkeypatch):
     assert s.app.env == "prod"
     assert s.app.debug is False
     assert s.app.log_level == "WARNING"
+
+
+def _clear():
+    get_settings.cache_clear()
+
+
+def test_get_settings_is_singleton(monkeypatch):
+    _clear()
+    monkeypatch.delenv("APP_ENV", raising=False)
+    a = get_settings()
+    b = get_settings()
+    assert a is b

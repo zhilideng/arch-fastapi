@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -55,3 +56,8 @@ class Settings(BaseSettings):
             YamlConfigSettingsSource(settings_cls, yaml_file=yaml_path),
             file_secret_settings,
         )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
