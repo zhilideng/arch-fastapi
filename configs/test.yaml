@@ -1,7 +1,8 @@
+# 测试环境配置（APP_ENV=test 时加载）
 app:
   name: arch-fastapi
   env: test
   host: 0.0.0.0
   port: 8000
-  debug: false
+  debug: false  # 测试环境关闭调试
   log_level: INFO

@@ -13,3 +13,9 @@ venv/
 
 # pytest
 .pytest_cache/
+
+# Claude Code 本地配置（hooks / settings，工具私有，不入库）
+.claude/
+
+# 测试代码（按项目约定不入库）
+tests/

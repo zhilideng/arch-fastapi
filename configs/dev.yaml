@@ -1,7 +1,9 @@
+# 开发环境配置（APP_ENV=dev 时加载）
+# 优先级：环境变量 > .env > 本文件 > 代码默认值
 app:
-  name: arch-fastapi
-  env: dev
-  host: 0.0.0.0
-  port: 8000
-  debug: true
-  log_level: DEBUG
+  name: arch-fastapi  # 应用名称
+  env: dev  # 环境标识，须与文件名一致
+  host: 0.0.0.0  # 监听地址
+  port: 8002  # 监听端口
+  debug: true  # 开发环境开启调试
+  log_level: DEBUG  # 开发环境用 DEBUG 级别日志，便于排查

@@ -1,7 +1,9 @@
+# 生产环境配置（APP_ENV=prod 时加载）
+# 注意：DB / JWT / LLM 等敏感密钥务必只经环境变量或 K8s Secret 注入，绝不写入此文件
 app:
   name: arch-fastapi
   env: prod
   host: 0.0.0.0
   port: 8000
-  debug: false
-  log_level: WARNING
+  debug: false  # 生产环境必须关闭调试
+  log_level: WARNING  # 生产用 WARNING，减少日志量
