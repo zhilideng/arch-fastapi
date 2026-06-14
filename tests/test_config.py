@@ -46,3 +46,11 @@ def test_settings_rejects_invalid_env(monkeypatch):
     monkeypatch.setenv("APP_ENV", "staging")
     with pytest.raises(ValueError):
         Settings()
+
+
+def test_settings_switches_to_prod_env(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "prod")
+    s = Settings()
+    assert s.app.env == "prod"
+    assert s.app.debug is False
+    assert s.app.log_level == "WARNING"

@@ -46,6 +46,8 @@ class Settings(BaseSettings):
                 f"APP_ENV 非法: {env!r}，允许 {sorted(_ENV_CHOICES)}"
             )
         yaml_path = Path(__file__).resolve().parents[2] / "configs" / f"{env}.yaml"
+        if not yaml_path.exists():
+            raise FileNotFoundError(f"环境配置文件缺失: {yaml_path}")
         return (
             init_settings,
             env_settings,
