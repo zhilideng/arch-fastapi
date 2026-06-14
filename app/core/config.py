@@ -12,7 +12,6 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -20,25 +19,47 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
+# 各配置段模型统一收纳于 settings/ 包，按文件拆分避免本文件臃肿；
+# 此处 re-export 以保持 ``from app.core.config import AppSettings`` 的对外兼容。
+from app.core.settings import AppSettings
+
 # 允许的环境标识，与 configs/ 下的 yaml 文件名一一对应
 _ENV_CHOICES = ("dev", "test", "prod")
 # 未显式指定 APP_ENV 时的默认环境
 _DEFAULT_ENV = "dev"
 
 
-class AppSettings(BaseModel):
-    """应用通用配置（对应 yaml 的 app 段）。
+def _project_root() -> Path:
+    """定位项目根目录。
 
-    这些字段非敏感，可入 yaml；后续涉及 DB / JWT / LLM 等敏感项时，
-    应新增独立配置段并使用 SecretStr，且仅经环境变量注入。
+    从本文件向上查找最近的「项目根标记」目录（含 ``.git`` 或
+    ``requirements.txt``），抗 ``config.py`` 文件位置变更（如后续重构为
+    ``app/core/config/`` 包时不会因深度变化而指错位置）；若均未命中，
+    退回到基于当前文件上溯两级的旧式锚点，保证总有兜底。
     """
+    cur = Path(__file__).resolve().parent
+    for anc in (cur, *cur.parents):
+        if (anc / ".git").exists() or (anc / "requirements.txt").exists():
+            return anc
+    return Path(__file__).resolve().parents[2]  # 兜底：上溯两级到项目根
 
-    name: str = "arch-fastapi"  # 应用名称
-    env: str = "dev"  # 当前运行环境标识，应与所选 yaml 文件名一致
-    host: str = "0.0.0.0"  # 服务监听地址
-    port: int = 8000  # 服务监听端口
-    debug: bool = False  # 是否开启调试模式（生产环境必须为 False）
-    log_level: str = "INFO"  # 日志级别
+
+def _resolve_configs_dir() -> Path:
+    """解析 configs 目录路径（部署期可覆盖）。
+
+    优先级：
+    1) 环境变量 ``APP_CONFIG_DIR`` —— 绝对路径直接用；相对路径基于项目根；
+       供容器 / 生产环境把 yaml 挂载到任意目录（如 /etc/<app>、ConfigMap）。
+    2) 默认 ``<项目根>/configs``。
+
+    设计动机：配置文件位置是「部署期变量」而非「编译期常量」，故不应硬编码
+    在代码里，而应由环境变量注入；项目根则用结构标记定位而非脆弱的上溯层级。
+    """
+    env_dir = os.getenv("APP_CONFIG_DIR")
+    if env_dir:
+        p = Path(env_dir).expanduser()
+        return p if p.is_absolute() else _project_root() / p
+    return _project_root() / "configs"
 
 
 class Settings(BaseSettings):
@@ -84,10 +105,14 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"APP_ENV 非法: {env!r}，允许 {list(_ENV_CHOICES)}"
             )
-        # 定位 configs/{env}.yaml：config.py 上溯两级到项目根，再进 configs/
-        yaml_path = Path(__file__).resolve().parents[2] / "configs" / f"{env}.yaml"
+        # 定位 configs/{env}.yaml：configs 目录经 _resolve_configs_dir() 解析，
+        # 可被环境变量 APP_CONFIG_DIR 覆盖（容器/生产挂载入口）。
+        yaml_path = _resolve_configs_dir() / f"{env}.yaml"
         if not yaml_path.exists():
-            raise FileNotFoundError(f"环境配置文件缺失: {yaml_path}")
+            raise FileNotFoundError(
+                f"环境配置文件缺失: {yaml_path}"
+                f"（configs 目录可经环境变量 APP_CONFIG_DIR 覆盖）"
+            )
         # 返回优先级从高到低的配置源列表
         return (
             init_settings,
