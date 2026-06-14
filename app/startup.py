@@ -5,7 +5,7 @@
 from fastapi import FastAPI
 from app.api.health import router as health_router
 from app.core.config import Settings, get_settings
-from app.core.logger import logger, setup_logging
+from app.core.logger import intercept_uvicorn_logs, logger, setup_logging
 
 
 def load_config() -> Settings:
@@ -18,6 +18,8 @@ def load_config() -> Settings:
     """
     settings = get_settings()
     setup_logging(level=settings.app.log_level)
+    # 把 uvicorn 日志接入 loguru，应用日志与访问/错误日志格式统一
+    intercept_uvicorn_logs(level=settings.app.log_level)
     app_cfg = settings.app
     logger.info(
         "配置加载完成 | env={} | name={} | host={} | port={} | debug={} | log_level={}",

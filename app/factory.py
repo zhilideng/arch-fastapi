@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import startup
+from app.core.config import get_settings
 
 
 @asynccontextmanager
@@ -22,8 +23,9 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """创建并配置 FastAPI 应用实例。"""
+    app_cfg = get_settings().app
     app = FastAPI(
-        title="arch-fastapi",
+        title=app_cfg.name,
         description="AI Agent 取向的 FastAPI 后端",
         lifespan=lifespan,
     )

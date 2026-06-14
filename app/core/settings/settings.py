@@ -30,3 +30,9 @@ class AppSettings(BaseModel):
     port: int = 8000  # 服务监听端口
     debug: bool = False  # 是否开启调试模式（生产环境必须为 False）
     log_level: str = "INFO"  # 日志级别
+    # —— uvicorn 运行期调优（生产相关，非敏感，可入 yaml）——
+    workers: int | None = None  # worker 进程数；None=自动(min(cpu*2,4))，显式数字则用该值（dev reload 时忽略）
+    loop: str = "auto"  # 事件循环：auto=优先 uvloop 回退 asyncio；亦可显式 uvloop/asyncio
+    limit_concurrency: int | None = None  # 最大并发连接数（背压保护）；None=不限
+    timeout_keep_alive: int = 5  # keep-alive 超时秒数
+    access_log: bool = True  # 是否记录 uvicorn 访问日志（接 loguru，生产排查/审计用）

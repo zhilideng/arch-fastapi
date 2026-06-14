@@ -2,8 +2,14 @@
 # 注意：DB / JWT / LLM 等敏感密钥务必只经环境变量或 K8s Secret 注入，绝不写入此文件
 app:
   name: arch-fastapi
-  env: prod
+  env: dev
   host: 0.0.0.0
-  port: 8000
+  port: 8003
   debug: false  # 生产环境必须关闭调试
   log_level: WARNING  # 生产用 WARNING，减少日志量
+  # uvicorn 运行期调优（生产）
+  workers: 4  # worker 进程数；建议 ≈ CPU 核数或略高
+  loop: auto  # auto=优先 uvloop（部署机 pip install uvloop 后自动启用）
+  limit_concurrency: 2000  # 最大并发连接，背压保护
+  timeout_keep_alive: 10  # keep-alive 秒数
+  access_log: true  # 保留访问日志（接 loguru）；若有外层网关记 access log 可设 false
