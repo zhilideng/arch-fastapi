@@ -3,7 +3,7 @@
 新增模块的注册点统一放此处，保持 factory.create_app 简洁。
 """
 from fastapi import FastAPI
-from app.api.health import router as health_router
+from app.api.routes import register_routes
 from app.core.config import Settings, get_settings
 from app.core.logger import intercept_uvicorn_logs, logger, setup_logging
 from app.exceptions import register_exception_handlers as register_exception
@@ -31,8 +31,13 @@ def load_config() -> Settings:
 
 
 def register_routers(app: FastAPI) -> None:
-    """注册 API 路由。"""
-    app.include_router(health_router)
+    """注册 API 路由。
+
+    薄封装：转调 ``app.api.routes.register_routes``，保持本文件作为
+    「所有注册点单一清单」的风格，与 register_exception_handlers / register_middlewares 同形。
+    实际路由清单（include_router 调用）集中在 ``app/api/routes.py``。
+    """
+    register_routes(app)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -54,4 +59,3 @@ def register_middlewares(app: FastAPI) -> None:
     - JWT 认证 / TraceId / 限流等中间件。
     """
     setup_cors(app)
-
