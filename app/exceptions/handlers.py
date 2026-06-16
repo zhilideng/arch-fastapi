@@ -19,7 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logger import logger
 from app.exceptions.base import BizException
-from app.schemas.common import ApiResponse
+from app.utils.common import ApiResponse
 
 
 async def biz_exception_handler(request: Request, exc: BizException) -> JSONResponse:
