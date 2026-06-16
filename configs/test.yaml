@@ -17,3 +17,17 @@ logging:
   diagnose: false
   backtrace: true
   enqueue: true
+
+db:
+  url: postgresql+asyncpg://user:pass@localhost:5432/app  # 占位 DSN（真值走环境变量 APP__DB__URL）
+  pool_size: 10
+  max_overflow: 20
+  pool_recycle: 3600
+  echo: false   # test 关 SQL echo
+
+redis:
+  url: redis://localhost:6379/0  # Redis 连接 URL
+  db: 0  # 数据库编号（url 路径优先，未指定时用本值）
+  max_connections: 20  # 连接池最大连接数
+  decode_responses: true  # 自动解码响应为 str
+  encoding: utf-8  # 字符编码

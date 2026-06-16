@@ -42,26 +42,29 @@ def _create_engine(db_settings: DBSettings):
     注意：SQLite in-memory 测试时用 NullPool（连接池无意义）。
     """
     url = db_settings.url
-    # SQLite in-memory 用 NullPool（测试环境）
+    # SQLite in-memory 用 NullPool（测试环境），不传 pool_size/max_overflow
     if url.startswith("sqlite"):
-        poolclass = NullPool
+        engine_args = {
+            "poolclass": NullPool,
+            "pool_recycle": db_settings.pool_recycle,
+            "pool_pre_ping": True,
+            "echo": db_settings.echo,
+        }
         pool_size = None
         max_overflow = None
     else:
-        poolclass = None
+        engine_args = {
+            "pool_size": db_settings.pool_size,
+            "max_overflow": db_settings.max_overflow,
+            "pool_recycle": db_settings.pool_recycle,
+            "pool_pre_ping": True,
+            "echo": db_settings.echo,
+        }
         pool_size = db_settings.pool_size
         max_overflow = db_settings.max_overflow
 
     try:
-        engine = create_async_engine(
-            url,
-            pool_size=pool_size,
-            max_overflow=max_overflow,
-            pool_recycle=db_settings.pool_recycle,
-            pool_pre_ping=True,  # 连接前先 ping，防连接失效
-            echo=db_settings.echo,
-            poolclass=poolclass,
-        )
+        engine = create_async_engine(url, **engine_args)
         logger.info(
             "数据库引擎创建成功 | url={} | pool_size={} | max_overflow={}",
             url.split("@")[-1] if "@" in url else url,  # 脱敏打印
@@ -72,9 +75,8 @@ def _create_engine(db_settings: DBSettings):
     except Exception as exc:
         logger.error("数据库引擎创建失败: {}", exc)
         raise BizException(
-            status_code=500,
-            errno="DB_ENGINE_CREATE_FAILED",
             message="数据库引擎创建失败",
+            errno="DB_ENGINE_CREATE_FAILED",
         ) from exc
 
 
@@ -91,7 +93,6 @@ def _create_session_maker(engine):
     )
 
 
-@lru_cache
 def get_engine():
     """获取数据库引擎单例（进程级唯一）。
 
@@ -145,9 +146,8 @@ async def dispose_db():
     except Exception as exc:
         logger.error("数据库连接池释放失败: {}", exc)
         raise BizException(
-            status_code=500,
-            errno="DB_DISPOSE_FAILED",
             message="数据库连接池释放失败",
+            errno="DB_DISPOSE_FAILED",
         ) from exc
     finally:
         _engine = None
@@ -168,9 +168,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     session_maker = get_session_maker()
     if session_maker is None:
         raise BizException(
-            status_code=500,
-            errno="DB_NOT_INITIALIZED",
             message="数据库未初始化",
+            errno="DB_NOT_INITIALIZED",
         )
 
     async with session_maker() as session:

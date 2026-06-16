@@ -24,3 +24,17 @@ logging:
   diagnose: false   # prod 关：防异常栈泄露敏感变量
   backtrace: true
   enqueue: true
+
+db:
+  url: postgresql+asyncpg://user:pass@localhost:5432/app  # 占位 DSN（真值走环境变量 APP__DB__URL）
+  pool_size: 20  # prod 增大连接池
+  max_overflow: 40
+  pool_recycle: 3600
+  echo: false   # prod 关 SQL echo
+
+redis:
+  url: redis://localhost:6379/0  # Redis 连接 URL（生产环境建议走环境变量 APP__REDIS__URL）
+  db: 0  # 数据库编号（url 路径优先，未指定时用本值）
+  max_connections: 50  # 连接池最大连接数（生产可适当放大）
+  decode_responses: true  # 自动解码响应为 str
+  encoding: utf-8  # 字符编码
