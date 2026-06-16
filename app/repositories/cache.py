@@ -62,7 +62,7 @@ async def cache_set(key: str, value: Any, ttl: Optional[int] = None) -> None:
 
     try:
         if ttl is not None:
-            await redis.setex(key, ttl, serialized)
+            await redis.set(key, serialized, ex=ttl)
             logger.debug("缓存已设置（TTL {}s）: {}", ttl, key)
         else:
             await redis.set(key, serialized)
