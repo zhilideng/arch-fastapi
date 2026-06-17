@@ -12,7 +12,7 @@
 from functools import lru_cache
 from typing import AsyncGenerator
 
-from sqlalchemy import NullPool
+from sqlalchemy import NullPool, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -66,7 +66,7 @@ def _create_engine(db_settings: DBSettings):
     try:
         engine = create_async_engine(url, **engine_args)
         logger.info(
-            "数据库引擎创建成功 | url={} | pool_size={} | max_overflow={}",
+            "数据库引擎对象已创建（待预检验证连通性）| url={} | pool_size={} | max_overflow={}",
             url.split("@")[-1] if "@" in url else url,  # 脱敏打印
             pool_size,
             max_overflow,
@@ -111,11 +111,14 @@ def get_session_maker():
     return _async_session_maker
 
 
-def init_db(db_settings: DBSettings):
-    """初始化数据库连接池（lifespan 启动时调用）。
+async def init_db(db_settings: DBSettings):
+    """初始化数据库连接池并做连通性预检（lifespan 启动时调用）。
 
-    创建全局 engine 和 sessionmaker，进程内复用。
-    可重复调用（幂等），已初始化则跳过。
+    创建全局 engine 和 sessionmaker，进程内复用，可重复调用（幂等）。
+    **连通性预检（fail-fast）**：建完 engine 立即执行 ``SELECT 1`` 验证 DB 可达，
+    失败则释放 engine 并抛 ``BizException`` 让进程启动失败——DB 是核心依赖，
+    不可达必须在启动期暴露，而非拖到首个真实查询才报错（与 Redis「非核心降级」
+    形成对照：Redis 容错降级、DB fail-fast）。
     """
     global _engine, _async_session_maker
 
@@ -125,7 +128,23 @@ def init_db(db_settings: DBSettings):
 
     _engine = _create_engine(db_settings)
     _async_session_maker = _create_session_maker(_engine)
-    logger.info("数据库初始化完成")
+
+    # 连通性预检：SELECT 1，DB 不可达则 fail-fast 拒启动
+    try:
+        async with _engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        # 预检失败：回滚已建 engine，避免残留半初始化状态
+        await _engine.dispose()
+        _engine = None
+        _async_session_maker = None
+        logger.error("数据库连通性预检失败 | url={}", db_settings.url.split("@")[-1])
+        raise BizException(
+            message="数据库连通性预检失败，请检查 DB 是否可达",
+            errno="DB_CONNECT_FAILED",
+        ) from exc
+
+    logger.info("数据库连通性预检通过（SELECT 1）| 初始化完成")
 
 
 async def dispose_db():

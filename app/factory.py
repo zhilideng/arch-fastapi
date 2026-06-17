@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     app.state.settings = settings
     # 初始化数据库连接池
     from app.core.database import init_db
-    init_db(settings.db)
+    await init_db(settings.db)
     # 初始化 Redis 连接池
     from app.core.redis import init_redis
     await init_redis(settings.redis)

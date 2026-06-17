@@ -67,7 +67,7 @@ class DBSettings(BaseModel):
     """数据库配置段（对应 yaml 的 db 段）。
 
     驱动 ``app/core/database.py`` 的 SQLAlchemy 引擎与连接池行为。
-    URL 敏感（含口令），仅经环境变量注入（APP__DB__URL），yaml 留占位。
+    URL 敏感（含口令），仅经环境变量注入（DB__URL——env_prefix 空，故 db 段变量名是 DB__URL 而非 APP__DB__URL），yaml 留占位。
     """
 
     url: str = "postgresql+asyncpg://user:pass@localhost:5432/app"  # PostgreSQL async 连接串（敏感，真值走环境变量）
