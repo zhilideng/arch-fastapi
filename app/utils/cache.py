@@ -44,7 +44,7 @@ async def cache_get(key: str) -> Optional[Any]:
             return None
         logger.debug("缓存命中: {}", key)
         return json.loads(value)
-    except (json.JSONDecodeError, OSError) as exc:
+    except (json.JSONDecodeError, OSError, RedisError) as exc:
         raise BizException(f"缓存读取失败: {key}，原因: {exc}") from exc
 
 
