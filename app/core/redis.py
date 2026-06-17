@@ -109,3 +109,17 @@ def get_redis() -> redis.asyncio.Redis:
     if _redis_client is None:
         raise RuntimeError("Redis 客户端未初始化，请先调用 init_redis()")
     return _redis_client
+
+
+def get_redis_optional() -> Optional[redis.asyncio.Redis]:
+    """获取 Redis 单例；降级或未初始化时返回 None（不抛异常）。
+
+    供健康检查（readyz）等只读探针使用——区分「在线」与「降级运行」状态：
+    ``get_redis()`` 在降级时抛 ``RuntimeError``（cache 层 fail-loud 需要），
+    而 readyz 需要把「Redis 不可用」判为「可降级（degraded）」而非服务失败，
+    故提供此查询函数避免异常掩盖可降级语义。
+
+    Returns:
+        已初始化的 ``redis.asyncio.Redis`` 实例；未初始化或已降级时为 ``None``。
+    """
+    return _redis_client
