@@ -49,3 +49,23 @@ cors:
   allow_credentials: false  # JWT 走 Authorization 头，无 cookie 凭证；若改 true 须确保 origins 无通配
   expose_headers: [X-Request-Id]  # 允许前端读取响应里的 request_id（追踪链闭环）
   max_age: 600  # 预检缓存秒数
+
+llm:
+  default_provider: openai  # 默认 Provider（get_provider 未指定名字时回退）
+  # 4 家 Provider 统一走 OpenAI 兼容端点，靠 base_url + api_key 切换厂商。
+  # api_key 敏感，**绝不写入本文件**，生产经环境变量 / K8s Secret 注入：
+  # LLM_API_KEY_<大写NAME>（如 LLM_API_KEY_OPENAI），由 core/llm/openai_provider.py 读取。
+  # timeout / max_retries 未写则用代码默认（60s / 2 次），如需调优在此显式覆盖。
+  providers:
+    openai:
+      base_url: https://api.openai.com/v1
+      default_model: gpt-4o-mini
+    deepseek:
+      base_url: https://api.deepseek.com/v1
+      default_model: deepseek-chat
+    qwen:
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      default_model: qwen-plus
+    claude:
+      base_url: https://api.anthropic.com/v1
+      default_model: claude-3-5-sonnet-20241022

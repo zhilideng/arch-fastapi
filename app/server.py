@@ -93,17 +93,26 @@ async def lifespan(app: FastAPI):
         from app.core.redis import init_redis
         await init_redis(settings.redis)
 
+        # LLM 网关初始化（在 DB/Redis 之后）：构造全部 Provider 单例。
+        # 不对云端做 ping 预检——LLM 调用是付费网络调用，连通性由首次真实
+        # 调用暴露（失败转 BizException），与 DB「启动期预检 fail-fast」对照。
+        from app.core.llm.gateway import init_llm
+
+        init_llm(settings.llm)
+
         yield
     finally:
         from app.core.redis import close_redis
         from app.core.database import dispose_db
         from app.utils.http_client import close_client
+        from app.core.llm.gateway import close_llm
 
         await _cleanup_resources(
             [
                 ("redis", close_redis),
                 ("database", dispose_db),
                 ("http_client", close_client),
+                ("llm", close_llm),
             ]
         )
 

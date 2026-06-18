@@ -40,3 +40,22 @@ cors:
   allow_credentials: false  # origins 通配时必须 False（浏览器拒绝 ["*"]+True 非法组合）
   expose_headers: []  # 暴露给前端的响应头
   max_age: 600  # 预检缓存秒数
+
+llm:
+  default_provider: openai  # 默认 Provider（get_provider 未指定名字时回退）
+  # 4 家 Provider 统一走 OpenAI 兼容端点，靠 base_url + api_key 切换厂商。
+  # api_key 敏感，**不写本文件**，经环境变量 LLM_API_KEY_<大写NAME> 注入
+  # （如 LLM_API_KEY_OPENAI），由 core/llm/openai_provider.py 读取。
+  providers:
+    openai:
+      base_url: https://api.openai.com/v1
+      default_model: gpt-4o-mini
+    deepseek:
+      base_url: https://api.deepseek.com/v1
+      default_model: deepseek-chat
+    qwen:
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1  # 通义 DashScope OpenAI 兼容模式
+      default_model: qwen-plus
+    claude:
+      base_url: https://api.anthropic.com/v1  # Anthropic 官方 OpenAI 兼容端点
+      default_model: claude-3-5-sonnet-20241022

@@ -18,3 +18,10 @@ asyncpg>=0.29
 # 缓存层依赖
 redis>=5.0  # 异步 Redis 客户端
 fakeredis>=2.23  # Redis 测试用 FakeRedis（已预装）
+
+# LLM 网关层依赖
+# 4 家 Provider（OpenAI/DeepSeek/Qwen/Claude）统一走 OpenAI 兼容端点，
+# 靠 base_url + api_key 切换厂商，共用同一套 openai SDK 调用代码。
+# Claude 经 Anthropic 官方 OpenAI 兼容端点接入（system/tool/流式细节有损，
+# 未来深度用 agent 能力时再评估升级到 anthropic SDK 双轨）。
+openai>=1.40  # OpenAI 官方 SDK（AsyncOpenAI 异步客户端 + 内置重试/超时）

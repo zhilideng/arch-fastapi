@@ -16,17 +16,29 @@
 - ``LoggingSettings`` —— 日志配置（级别/序列化/目录/轮转/保留/压缩/diagnose/enqueue）；
 - ``DBSettings`` —— 数据库配置（连接串/连接池/echo）；
 - ``RedisSettings`` —— Redis 缓存配置（url/db/max_connections/decode_responses/encoding）；
-- ``CorsSettings`` —— 跨域配置（origins/methods/headers/credentials/expose_headers/max_age；dev/test 全放行、prod 收敛白名单）。
+- ``CorsSettings`` —— 跨域配置（origins/methods/headers/credentials/expose_headers/max_age；dev/test 全放行、prod 收敛白名单）；
+- ``LlmProviderConfig`` / ``LlmSettings`` —— LLM 网关配置（4 家 Provider 统一走 OpenAI 兼容端点；api_key 为 SecretStr 仅经环境变量注入）。
 
 注：仅 HTTP 客户端参数仍写死（见 ``app/utils/http_client.py``），不进配置；
-CORS 跨域策略已改配置驱动（见 ``CorsSettings`` 段 + ``app/middleware/cors.py``）。
+CORS 跨域策略已改配置驱动（见 ``CorsSettings`` 段）；LLM 网关参数亦配置驱动
+（见 ``LlmSettings`` 段 + ``app/core/llm/``）。
 """
 from app.core.settings.settings import (
     AppSettings,
     CorsSettings,
     DBSettings,
+    LlmProviderConfig,
+    LlmSettings,
     LoggingSettings,
     RedisSettings,
 )
 
-__all__ = ["AppSettings", "LoggingSettings", "DBSettings", "RedisSettings", "CorsSettings"]
+__all__ = [
+    "AppSettings",
+    "LoggingSettings",
+    "DBSettings",
+    "RedisSettings",
+    "CorsSettings",
+    "LlmProviderConfig",
+    "LlmSettings",
+]

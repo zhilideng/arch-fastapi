@@ -25,6 +25,7 @@ from app.core.settings import (
     AppSettings,
     CorsSettings,
     DBSettings,
+    LlmSettings,
     LoggingSettings,
     RedisSettings,
 )
@@ -87,6 +88,7 @@ class Settings(BaseSettings):
     db: DBSettings = DBSettings()  # 数据库配置段（驱动 database.py）
     redis: RedisSettings = RedisSettings()  # Redis 缓存配置段（驱动 redis.py）
     cors: CorsSettings = CorsSettings()  # 跨域配置段（驱动 cors.py）
+    llm: LlmSettings = LlmSettings()  # LLM 网关配置段（驱动 core/llm/）
 
     @classmethod
     def settings_customise_sources(

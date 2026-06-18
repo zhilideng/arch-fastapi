@@ -16,12 +16,13 @@
 - ``LoggingSettings`` —— 日志配置（级别/序列化/目录/轮转/保留/压缩/diagnose/enqueue）；
 - ``DBSettings`` —— 数据库配置（连接串/连接池/echo）；
 - ``RedisSettings`` —— Redis 缓存配置（url/db/max_connections/decode_responses/encoding）；
-- ``CorsSettings`` —— 跨域配置（origins/methods/headers/credentials/expose_headers/max_age；dev/test 全放行、prod 收敛白名单）。
+- ``CorsSettings`` —— 跨域配置（origins/methods/headers/credentials/expose_headers/max_age；dev/test 全放行、prod 收敛白名单）；
+- ``LlmProviderConfig`` / ``LlmSettings`` —— LLM 网关配置（4 家 Provider 统一走 OpenAI 兼容端点；api_key 为 SecretStr 仅经环境变量注入）。
 
 注：仅 HTTP 客户端参数仍写死（见 ``app/utils/http_client.py``），不进配置；
 CORS 跨域策略已改配置驱动（见 ``CorsSettings`` 段 + ``app/middleware/cors.py``）。
 """
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, SecretStr, model_validator
 
 
 class AppSettings(BaseModel):
@@ -127,3 +128,45 @@ class CorsSettings(BaseModel):
         if self.allow_credentials and "*" in self.allow_origins:
             raise ValueError("CORS allow_credentials=true 时 allow_origins 不能包含 '*'")
         return self
+
+
+class LlmProviderConfig(BaseModel):
+    """单个 LLM Provider 的连接配置（对应 yaml 的 ``llm.providers.<name>`` 段）。
+
+    4 家 Provider（OpenAI / DeepSeek / Qwen / Claude）统一走 **OpenAI 兼容端点**，
+    靠 ``base_url`` + ``api_key`` 切换厂商，共用同一套 openai SDK 调用代码——
+    这是「统一模型调用接口」的实现基石：底层一套实现覆盖全部 Provider。
+
+    安全约定：``api_key`` 为 ``SecretStr``，**不写入 yaml**。注入方式：经环境变量
+    ``LLM_API_KEY_<大写NAME>``（如 ``LLM_API_KEY_OPENAI``）由
+    ``app/core/llm/openai_provider.py`` 读取——pydantic-settings 对
+    ``dict[str, model]`` 的深度 env 覆盖存在 key 大小写坑（环境变量里的 ``OPENAI``
+    与 yaml 小写 ``openai`` 不匹配，且单独注入 ``api_key`` 会让必填的
+    ``base_url`` / ``default_model`` 校验失败），故密钥不走
+    ``LLM__PROVIDERS__<NAME>__API_KEY``，而走此约定变量名，可靠且贴近业界惯例。
+
+    已知限制：Claude 经 Anthropic 官方 OpenAI 兼容端点接入，其原生 system prompt、
+    tool calling 返回结构、流式 chunk 字段细节有损；未来若深度用 Claude 的 agent
+    能力，再评估升级到 anthropic SDK 双轨（届时本结构无需改，新增 provider 实现即可）。
+    """
+
+    base_url: str  # OpenAI 兼容端点 URL（如 https://api.openai.com/v1、https://api.deepseek.com/v1）
+    api_key: SecretStr = SecretStr("")  # API Key（敏感，仅环境变量注入，不写 yaml）
+    default_model: str  # 该 Provider 默认模型名（如 gpt-4o-mini / deepseek-chat / qwen-plus / claude-3-5-sonnet-20241022）
+    timeout: float = 60.0  # 单次调用超时秒（透传 openai SDK timeout 参数）
+    max_retries: int = 2  # openai SDK 内置重试次数（自动处理 429/5xx 指数退避，无需自写重试）
+
+
+class LlmSettings(BaseModel):
+    """LLM 网关配置段（对应 yaml 的 ``llm`` 段）。
+
+    驱动 ``app/core/llm/gateway.py`` 的多 Provider 注册与默认 Provider 选择。
+    ``providers`` 为「Provider 名 → 连接配置」字典，启动期由 ``init_llm`` 遍历
+    构造全部 Provider 单例（构造廉价、不连云）；``default_provider`` 为
+    ``get_provider()`` 未指定名字时的回退。
+    """
+
+    default_provider: str = "openai"  # 默认 Provider 名（须在 providers 中存在，否则 get_provider 抛异常）
+    providers: dict[str, LlmProviderConfig] = Field(
+        default_factory=dict
+    )  # Provider 清单；空 dict 时网关降级为「无 Provider 可用」
