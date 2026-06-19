@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目当前状态（务必先读）
 
+**2026-06-19 补充（LLM 当前实现以此为准）**：`app/core/llm/gateway.py` 当前采用 `openai.AsyncOpenAI` 直接缓存客户端实例（`llm_instances`）+ `langchain_models` 缓存 LangChain ChatModel；已去除对不存在的 `base.py` / `openai_provider.py` 源码依赖。密钥仍统一经 `LLM_API_KEY_<大写PROVIDER>` 注入，由 `gateway.py` 读取（优先系统环境变量，兜底项目根 `.env`）；配置已新增智谱 `zhipu` Provider（OpenAI 兼容端点 `https://open.bigmodel.cn/api/paas/v4/`，默认模型 `glm-4-flash`），真实 key 不写入 yaml / 代码；新增测试接口 `GET /v1/llm/zhipu/test`，用于验证智谱连通性，401 时优先检查 `LLM_API_KEY_ZHIPU` 是否正确并重启服务让启动期 `init_llm()` 重新建客户端。
+
 **配置中心 + 启动链 + 全局异常捕获 + 生产级结构化日志 + 全局异步 HTTP 封装 + 跨域中间件 + RequestID 请求追踪 + 访问日志中间件（AccessLog 接管 uvicorn access log，带 request_id + 耗时） + SQLAlchemy 数据层 + Redis 缓存层 + 业务分层案例（user：api→schemas→services→repositories 全链路）+ LLM 网关层（openai SDK 统一接入 OpenAI/DeepSeek/Qwen/Claude，chat/streaming/tool_calling/usage）已实现**：
 
 - **配置中心**：`app/core/config.py`（pydantic-settings + yaml + .env + 环境变量多源，仅承载 `Settings` 根配置 + 多源加载 + `get_settings`，带 yaml 缺失 fail-fast；configs 目录经 `_resolve_configs_dir()` 解析——可被环境变量 `APP_CONFIG_DIR` 覆盖（容器/生产挂载入口），项目根用 `.git`/`requirements.txt` 标记向上查找抗文件移位；对外仍 re-export `AppSettings`，引用路径不变）；**配置段模型** `app/core/settings/`（schema 层，所有 `XxxSettings` 集中在 `settings.py` 单文件定义，避免 config.py 臃肿（当前已含 App/Logging/DB/Redis/Cors/Llm 六段；仅 HTTP 客户端参数与 RequestID 策略写死不进配置，CORS 已改配置驱动见 ``CorsSettings``、LLM 见 ``LlmSettings``）；新增 JWT 等段时在 `settings.py` 加 class + `__init__` 导出 + `Settings` 根聚合字段）；`configs/{dev,test,prod}.yaml`、`.env.example`（含 `APP_CONFIG_DIR` 说明）、`.gitignore` 就位。
