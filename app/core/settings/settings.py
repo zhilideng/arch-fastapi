@@ -157,16 +157,41 @@ class LlmProviderConfig(BaseModel):
     max_retries: int = 2  # openai SDK 内置重试次数（自动处理 429/5xx 指数退避，无需自写重试）
 
 
+class LangSmithConfig(BaseModel):
+    """LangSmith 追踪配置（对应 yaml 的 ``llm.langsmith`` 段）。
+
+    驱动 ``app/core/llm/gateway.py`` 的 LangChain 追踪开关。``enabled`` 为总开关：
+
+    - **false（默认，零上报）**：``configure_langsmith_tracing`` 不设任何环境变量、
+      ``langchain_tracing_context`` 退化为 no-op（直接 yield），LangChain 不会向
+      LangSmith 上报任何 run；
+    - **true**：``configure_langsmith_tracing`` 设 ``LANGCHAIN_TRACING_V2=true`` +
+      ``LANGCHAIN_PROJECT``，``langchain_tracing_context`` 进入
+      ``tracing_v2_enabled`` 上下文，块内 LangChain runs 上报到 LangSmith。
+
+    安全约定：``api_key`` 敏感，**不写入 yaml**，经环境变量 ``LANGCHAIN_API_KEY``
+    注入（LangChain 运行时默认读取）；``endpoint`` 默认走 LangSmith 官方云，如需
+    自建或私有化经 ``LANGCHAIN_ENDPOINT`` 环境变量覆盖，同样不入 yaml。
+    """
+
+    enabled: bool = False  # LangSmith 追踪总开关，默认关闭（零上报）
+    project: str = "default"  # LangSmith 项目名（runs 上报到哪个 project）
+
+
 class LlmSettings(BaseModel):
     """LLM 网关配置段（对应 yaml 的 ``llm`` 段）。
 
     驱动 ``app/core/llm/gateway.py`` 的多 Provider 注册与默认 Provider 选择。
     ``providers`` 为「Provider 名 → 连接配置」字典，启动期由 ``init_llm`` 遍历
     构造全部 Provider 单例（构造廉价、不连云）；``default_provider`` 为
-    ``get_provider()`` 未指定名字时的回退。
+    ``get_provider()`` 未指定名字时的回退。``langsmith`` 控制 LangSmith 追踪
+    开关，默认关闭。
     """
 
     default_provider: str = "openai"  # 默认 Provider 名（须在 providers 中存在，否则 get_provider 抛异常）
     providers: dict[str, LlmProviderConfig] = Field(
         default_factory=dict
     )  # Provider 清单；空 dict 时网关降级为「无 Provider 可用」
+    langsmith: LangSmithConfig = Field(
+        default_factory=LangSmithConfig
+    )  # LangSmith 追踪配置（默认关闭，零上报）

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from inspect import isawaitable
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,7 @@ import openai
 from dotenv import dotenv_values
 
 from app.core.logger import logger
-from app.core.settings import LlmProviderConfig, LlmSettings
+from app.core.settings import LangSmithConfig, LlmProviderConfig, LlmSettings
 from app.exceptions import (
     BizException,
     LLM_ERRNO_CALL_FAILED,
@@ -21,17 +22,25 @@ from app.exceptions import (
 llm_instances: dict[str, openai.AsyncOpenAI] = {}
 langchain_models: dict[str, Any] = {}
 default_provider_name: str = ""
+# LangSmith 追踪配置（init_llm 注入，供 langchain_tracing_context 请求级读取）；
+# 下划线前缀表「模块私有实现细节」，非业务实体命名，符合命名规范排除项。
+_langsmith_config: LangSmithConfig | None = None
 
 
 def init_llm(settings: LlmSettings) -> None:
     """按配置初始化 LLM 客户端实例与 LangChain 模型。
 
     单个 Provider 构造失败时跳过，不阻断应用启动；这里不对云端做 ping 预检。
+    开头先按 ``settings.langsmith`` 配置 LangSmith 追踪（开关默认关，零上报）。
     """
-    global default_provider_name
+    global default_provider_name, _langsmith_config
     llm_instances.clear()
     langchain_models.clear()
     default_provider_name = settings.default_provider
+
+    # LangSmith 追踪：缓存配置 + 按开关设全局环境变量（关则什么都不做）
+    _langsmith_config = settings.langsmith
+    configure_langsmith_tracing(settings.langsmith)
 
     for name, cfg in settings.providers.items():
         api_key = resolve_api_key(name, cfg)
@@ -102,8 +111,11 @@ def get_langchain_llm(name: str | None = None) -> Any:
 
 
 def build_langchain_llm(name: str, cfg: LlmProviderConfig) -> Any:
-    """创建 LangChain ChatModel 实例。"""
-    configure_langsmith_tracing()
+    """创建 LangChain ChatModel 实例。
+
+    LangSmith 追踪已在 ``init_llm`` 开头按开关统一配置（全局一次性），此处不再
+    重复调用，避免每个 Provider 构造时重复设环境变量。
+    """
     try:
         from langchain.chat_models import init_chat_model
     except ImportError as exc:
@@ -128,6 +140,59 @@ def build_langchain_llm(name: str, cfg: LlmProviderConfig) -> Any:
 
     logger.info("LangChain LLM 已初始化 | name={} | model={}", name, cfg.default_model)
     return model
+
+
+def configure_langsmith_tracing(cfg: LangSmithConfig) -> None:
+    """按 LangSmith 开关配置全局追踪环境变量。
+
+    受控变量同时覆盖 langsmith / langchain 两套前缀（``LANGSMITH_TRACING_V2`` 与
+    ``LANGCHAIN_TRACING_V2``），兼容新旧命名——langchain 运行时按这些环境变量
+    决定是否上报，必须在应用层显式收敛，否则外部 shell / IDE 注入的 ``true``
+    （连同占位 key）会让本地/测试持续往 LangSmith 发请求并报 403。
+
+    - **开关关（``enabled=false``，默认）**：把两套 tracing 变量**强制设为
+      ``false``**，压制外部可能存在的 ``true``，实现真正的零上报（关键：不能
+      只「不设」——外部 ``true`` 仍会触发上报）。
+    - **开关开（``enabled=true``）**：设 ``true`` + ``LANGSMITH_PROJECT`` /
+      ``LANGCHAIN_PROJECT``；密钥由 ``LANGSMITH_API_KEY`` / ``LANGCHAIN_API_KEY``
+      环境变量另行注入，本函数不覆盖既有值。
+    """
+    tracing_vars = ("LANGSMITH_TRACING_V2", "LANGCHAIN_TRACING_V2")
+    if not cfg.enabled:
+        # 强制关闭：压制外部 shell/IDE 注入的 tracing=true（避免占位 key 报 403）
+        for var in tracing_vars:
+            os.environ[var] = "false"
+        return
+    for var in tracing_vars:
+        os.environ[var] = "true"
+    if cfg.project:
+        os.environ["LANGSMITH_PROJECT"] = cfg.project
+        os.environ["LANGCHAIN_PROJECT"] = cfg.project
+    logger.info("LangSmith 追踪已启用 | project={}", cfg.project)
+
+
+@contextmanager
+def langchain_tracing_context():
+    """按 LangSmith 开关决定是否进入追踪上下文（请求级临时追踪）。
+
+    开关关（默认）：no-op，直接 yield，块内 LangChain 调用不上报。
+    开关开：进入 ``tracing_v2_enabled``，块内 runs 上报到 LangSmith（project
+    取配置值）。供 ``/v1/llm/langchain/test`` 等请求级临时追踪使用——与
+    ``configure_langsmith_tracing`` 设的全局环境变量一致：开关关时两者皆静默。
+    """
+    cfg = _langsmith_config
+    if cfg is None or not cfg.enabled:
+        yield
+        return
+    try:
+        from langchain_core.tracers.context import tracing_v2_enabled
+    except ImportError as exc:
+        raise BizException(
+            "LangChain 未安装，无法启用 LangSmith 追踪",
+            errno=LLM_ERRNO_CALL_FAILED,
+        ) from exc
+    with tracing_v2_enabled(project_name=cfg.project or None):
+        yield
 
 
 def resolve_name(name: str | None = None) -> str:
@@ -171,7 +236,7 @@ def project_root() -> Path:
 
 async def close_llm() -> None:
     """关闭全部 LLM 客户端实例并清空缓存。"""
-    global default_provider_name
+    global default_provider_name, _langsmith_config
     errors: list[tuple[str, Exception]] = []
     for name, client in list(llm_instances.items()):
         try:
@@ -185,6 +250,7 @@ async def close_llm() -> None:
     llm_instances.clear()
     langchain_models.clear()
     default_provider_name = ""
+    _langsmith_config = None
     if errors:
         detail = "; ".join(f"{name}: {exc}" for name, exc in errors)
         raise RuntimeError(f"LLM 实例关闭失败: {detail}")
