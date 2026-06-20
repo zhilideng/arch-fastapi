@@ -49,41 +49,41 @@
 
 ## ✨ 特性清单
 
-> ☑️ = 已实现并接入启动链；☐ = 规划中（见 [路线图](#路线图)）。
+> ✅ = 已实现并接入启动链；☐ = 规划中（见 [路线图](#路线图)）。
 
 ### 配置与启动
 
-- ☑️ **多源配置中心** —— `pydantic-settings + yaml + .env + 环境变量` 多源加载，支持 `dev/test/prod` 多环境，yaml 缺失 fail-fast
-- ☑️ **factory 模式启动链** —— `main.py → app/server.py`，集中 `create_app / lifespan / run`，启动期初始化 DB/Redis/LLM/Skill，关闭期逆序释放
-- ☑️ **统一响应规范** —— `ApiResponse{code, message, data, errno?}`，成功与失败响应形态一致
-- ☑️ **全局异常捕获** —— 业务异常 / HTTP 异常 / 参数校验异常 / 未知异常四类统一收口，500 兜底按 `debug` 脱敏
-- ☑️ **业务错误码分段** —— HTTP 类 `1+状态码`、业务 `1xxxx`、基础设施层 `2xxxx`（DB 20xxx / LLM 21xxx / Skill 23xxx），全系统 `errno` 统一为 `int`
+- ✅ **多源配置中心** —— `pydantic-settings + yaml + .env + 环境变量` 多源加载，支持 `dev/test/prod` 多环境，yaml 缺失 fail-fast
+- ✅ **factory 模式启动链** —— `main.py → app/server.py`，集中 `create_app / lifespan / run`，启动期初始化 DB/Redis/LLM/Skill，关闭期逆序释放
+- ✅ **统一响应规范** —— `ApiResponse{code, message, data, errno?}`，成功与失败响应形态一致
+- ✅ **全局异常捕获** —— 业务异常 / HTTP 异常 / 参数校验异常 / 未知异常四类统一收口，500 兜底按 `debug` 脱敏
+- ✅ **业务错误码分段** —— HTTP 类 `1+状态码`、业务 `1xxxx`、基础设施层 `2xxxx`（DB 20xxx / LLM 21xxx / Skill 23xxx），全系统 `errno` 统一为 `int`
 
 ### 可观测性与中间件
 
-- ☑️ **生产级结构化日志** —— Loguru 三 sink（stdout + 全量 `app.log` + ERROR 分流 `error.log`），dev 人类可读单行 / prod 精简 JSON，`enqueue` 多进程安全，按 rotation/retention/compression 轮转
-- ☑️ **RequestID 请求追踪** —— `X-Request-Id` 入站透传 / 自动生成 / 出站回写，日志与访问日志全程携带
-- ☑️ **AccessLog 访问日志** —— 自写中间件接管 uvicorn access log，带 `request_id` 与耗时，注册顺序保证 id 不丢失
-- ☑️ **CORS 跨域** —— 配置驱动，dev/test 全放行、prod 白名单收敛
-- ☑️ **全局异步 HTTP 封装** —— 进程级 `httpx.AsyncClient` 单例 + 连接池 + 四阶段超时 + 幂等方法指数退避重试
+- ✅ **生产级结构化日志** —— Loguru 三 sink（stdout + 全量 `app.log` + ERROR 分流 `error.log`），dev 人类可读单行 / prod 精简 JSON，`enqueue` 多进程安全，按 rotation/retention/compression 轮转
+- ✅ **RequestID 请求追踪** —— `X-Request-Id` 入站透传 / 自动生成 / 出站回写，日志与访问日志全程携带
+- ✅ **AccessLog 访问日志** —— 自写中间件接管 uvicorn access log，带 `request_id` 与耗时，注册顺序保证 id 不丢失
+- ✅ **CORS 跨域** —— 配置驱动，dev/test 全放行、prod 白名单收敛
+- ✅ **全局异步 HTTP 封装** —— 进程级 `httpx.AsyncClient` 单例 + 连接池 + 四阶段超时 + 幂等方法指数退避重试
 
 ### 数据访问
 
-- ☑️ **SQLAlchemy 2.0 异步数据层** —— async engine + `async_sessionmaker`，启动期 `SELECT 1` 连通性预检 fail-fast，`get_db()` 依赖注入
-- ☑️ **Redis 异步缓存层** —— `redis.asyncio` 单例连接池，非核心依赖（连不上降级运行不阻断启动），cache-aside 封装 + JSON 序列化 + TTL
-- ☑️ **业务分层范式** —— 已提供 `user` 模块 `api → schemas → services → repositories/{models,dao}` 全链路案例
+- ✅ **SQLAlchemy 2.0 异步数据层** —— async engine + `async_sessionmaker`，启动期 `SELECT 1` 连通性预检 fail-fast，`get_db()` 依赖注入
+- ✅ **Redis 异步缓存层** —— `redis.asyncio` 单例连接池，非核心依赖（连不上降级运行不阻断启动），cache-aside 封装 + JSON 序列化 + TTL
+- ✅ **业务分层范式** —— 已提供 `user` 模块 `api → schemas → services → repositories/{models,dao}` 全链路案例
 
 ### AI 能力
 
-- ☑️ **LLM 网关** —— OpenAI SDK 统一接入 **OpenAI / DeepSeek / Qwen / Claude / Zhipu** 兼容端点，支持 chat / streaming / tool_calling / usage
-- ☑️ **LangChain ChatModel 集成** —— `get_langchain_llm()` 复用网关配置，LangSmith tracing 开关可控（关时强制压制外部注入变量，零上报）
-- ☑️ **Skill 注册中心** —— Anthropic Agent Skills 风格能力包，启动期扫描 `SKILL.md` 建索引、请求期懒加载正文、按需缓存、统一 `run` 入口
+- ✅ **LLM 网关** —— OpenAI SDK 统一接入 **OpenAI / DeepSeek / Qwen / Claude / Zhipu** 兼容端点，支持 chat / streaming / tool_calling / usage
+- ✅ **LangChain ChatModel 集成** —— `get_langchain_llm()` 复用网关配置，LangSmith tracing 开关可控（关时强制压制外部注入变量，零上报）
+- ✅ **Skill 注册中心** —— Anthropic Agent Skills 风格能力包，启动期扫描 `SKILL.md` 建索引、请求期懒加载正文、按需缓存、统一 `run` 入口
 
 ### 工程规范
 
-- ☑️ **健康探针** —— `/livez` 存活探针（只看进程）、`/readyz` 就绪探针（检查 DB/Redis），K8s / 容器友好
-- ☑️ **分层依赖单向** —— `api → services → {agents/rag/skills/...} → repositories`，禁止反向依赖
-- ☑️ **LLM 访问收敛** —— 所有模型调用经 `core/llm/`，业务层不直接依赖厂商 SDK
+- ✅ **健康探针** —— `/livez` 存活探针（只看进程）、`/readyz` 就绪探针（检查 DB/Redis），K8s / 容器友好
+- ✅ **分层依赖单向** —— `api → services → {agents/rag/skills/...} → repositories`，禁止反向依赖
+- ✅ **LLM 访问收敛** —— 所有模型调用经 `core/llm/`，业务层不直接依赖厂商 SDK
 
 ---
 
@@ -102,16 +102,16 @@ services/             Service：业务编排
   │
   ├──► agents/         # Agent 能力预留
   ├──► workflows/      # LangGraph / 状态机 / 多 Agent 协作预留
-  ├──► skills/         # ☑️ 业务技能与专家经验（Skill 注册中心）
+  ├──► skills/         # ✅ 业务技能与专家经验（Skill 注册中心）
   ├──► rag/            # 检索、召回、重排、知识库管理预留
   ├──► memory/         # 对话记忆、用户画像、Checkpoint 预留
   └──► mcp/            # MCP Client / Server 管理预留
   │
   ▼
-repositories/         DAO：PostgreSQL / Redis（☑️）/ Milvus / ES 访问封装
+repositories/         DAO：PostgreSQL / Redis（✅）/ Milvus / ES 访问封装
 
 core/                 配置、日志、数据库、Redis、LLM、Skill 等横向基础能力
-middleware/           CORS、RequestID、AccessLog（☑️），后续可扩 JWT / 限流
+middleware/           CORS、RequestID、AccessLog（✅），后续可扩 JWT / 限流
 tasks/                Celery / Arq / 定时任务预留
 ```
 
@@ -145,7 +145,7 @@ arch-fastapi/
 │   ├── rag/                 # RAG 能力预留
 │   ├── memory/              # 记忆能力预留
 │   ├── mcp/                 # MCP 能力预留
-│   ├── skills/              # ☑️ Skill 数据资产（<name>/SKILL.md）
+│   ├── skills/              # ✅ Skill 数据资产（<name>/SKILL.md）
 │   ├── tasks/               # 异步任务预留
 │   └── server.py            # FastAPI 应用组装与运行
 ├── configs/
@@ -392,36 +392,36 @@ APP_ENV=prod gunicorn "app.server:create_app" -w 4 -k uvicorn.workers.UvicornWor
 
 ## 路线图
 
-> ☑️ 已完成 · ☐ 规划中
+> ✅ 已完成 · ☐ 规划中
 
 **基础设施**
 
-- ☑️ 配置中心（多源加载）
-- ☑️ factory 模式启动链
-- ☑️ 生产级结构化日志（Loguru）
-- ☑️ 统一响应 + 全局异常捕获
-- ☑️ 业务错误码分段（含基础设施层 2xxxx）
-- ☑️ RequestID 请求追踪
-- ☑️ AccessLog 访问日志
-- ☑️ CORS（配置驱动）
-- ☑️ 全局异步 HTTP client（重试/超时/连接池）
-- ☑️ 健康探针（livez / readyz）
+- ✅ 配置中心（多源加载）
+- ✅ factory 模式启动链
+- ✅ 生产级结构化日志（Loguru）
+- ✅ 统一响应 + 全局异常捕获
+- ✅ 业务错误码分段（含基础设施层 2xxxx）
+- ✅ RequestID 请求追踪
+- ✅ AccessLog 访问日志
+- ✅ CORS（配置驱动）
+- ✅ 全局异步 HTTP client（重试/超时/连接池）
+- ✅ 健康探针（livez / readyz）
 - ☐ JWT 认证
 - ☐ 限流（Rate Limit）
 
 **数据层**
 
-- ☑️ SQLAlchemy 2.0 异步数据层
-- ☑️ Redis 异步缓存层
-- ☑️ user 业务分层案例
+- ✅ SQLAlchemy 2.0 异步数据层
+- ✅ Redis 异步缓存层
+- ✅ user 业务分层案例
 - ☐ Milvus 向量库访问封装
 - ☐ Elasticsearch 访问封装
 
 **AI 能力**
 
-- ☑️ LLM Provider 统一入口（5 家）
-- ☑️ LangChain ChatModel 集成
-- ☑️ Skill 注册中心
+- ✅ LLM Provider 统一入口（5 家）
+- ✅ LangChain ChatModel 集成
+- ✅ Skill 注册中心
 - ☐ LLM fallback 降级 / pricing 计费
 - ☐ Embedding / 多模态
 - ☐ Prompt 模板与版本管理
