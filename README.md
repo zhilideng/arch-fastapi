@@ -409,7 +409,7 @@ APP_ENV=prod gunicorn "app.server:create_app" -w 4 -k uvicorn.workers.UvicornWor
 - ✅ CORS（配置驱动）
 - ✅ 全局异步 HTTP client（重试/超时/连接池）
 - ✅ 健康探针（livez / readyz）
-- ☐ 限流（Rate Limit）
+- ☐ 限流（Rate Limit，暂时不做，不是业务和服务都有那么高的并发）
 
 **数据层**
 
