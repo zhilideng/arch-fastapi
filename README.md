@@ -78,6 +78,8 @@
 ### AI 能力
 
 - ✅ **LLM 网关** —— OpenAI SDK 统一接入 **OpenAI / DeepSeek / Qwen / Claude / Zhipu** 兼容端点，支持 chat / streaming / tool_calling / usage
+- ✅ **Embedding 文本向量化** —— `embed()` 批量向量化，单批最多 2048 条、批量顺序恢复、可选 dimensions、usage 归一化，复用启动期 Provider 客户端
+- ✅ **图文多模态** —— `analyze_images()` URL/Base64 多图理解，最多 10 张、`auto/low/high` detail、魔数校验、拒绝动画 GIF，服务端不下载远程图片
 - ✅ **LangChain ChatModel 集成** —— `get_langchain_llm()` 复用网关配置，LangSmith tracing 开关可控（关时强制压制外部注入变量，零上报）
 - ✅ **Skill 注册中心** —— Anthropic Agent Skills 风格能力包，启动期扫描 `SKILL.md` 建索引、请求期懒加载正文、按需缓存、统一 `run` 入口
 
@@ -259,7 +261,7 @@ APP_ENV=dev conda run -n arch-fatapi uvicorn "app.server:create_app" --factory -
 | Claude | Anthropic OpenAI 兼容端点 | `claude-3-5-sonnet` |
 | Zhipu | `open.bigmodel.cn/api/paas/v4/` | `glm-4-flash` |
 
-能力：`chat`（非流式）/ `stream`（流式）/ `tool_calling` / `usage`。密钥统一经 `LLM_API_KEY_<大写NAME>` 环境变量注入，不写入 yaml/代码。
+能力：`chat`（非流式）/ `stream`（流式）/ `tool_calling` / `usage` / **`embed`（批量文本向量化）** / **`analyze_images`（URL/Base64 图文理解）**。密钥统一经 `LLM_API_KEY_<大写NAME>` 环境变量注入，不写入 yaml/代码。每个 Provider 可分别用 `default_model` / `embedding_model` / `multimodal_model` 声明能力，为空即未声明该能力（当前三套 yaml 已为 OpenAI 配 `text-embedding-3-small` / `gpt-4o-mini`）。
 
 验证连通性：
 
@@ -269,6 +271,16 @@ curl "http://127.0.0.1:8003/v1/llm/zhipu/test?prompt=只回复两个字：成功
 
 # 经 LangChain ChatModel 验证
 curl "http://127.0.0.1:8003/v1/llm/langchain/test?provider=zhipu&prompt=只回复两个字：成功"
+
+# 验证 Embedding 批量向量化（texts 必填，provider / model / dimensions 可选）
+curl -X POST "http://127.0.0.1:8003/v1/llm/embeddings/test" \
+  -H "Content-Type: application/json" \
+  -d '{"texts": ["你好", "世界"]}'
+
+# 验证图文多模态（prompt + images 必填；images 元素为 {url, detail}）
+curl -X POST "http://127.0.0.1:8003/v1/llm/multimodal/test" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "用一句话描述这张图", "images": [{"url": "https://example.com/a.png", "detail": "auto"}]}'
 ```
 
 ### Skill 注册中心（`app/core/skills/`）
@@ -424,7 +436,8 @@ APP_ENV=prod gunicorn "app.server:create_app" -w 4 -k uvicorn.workers.UvicornWor
 - ✅ LangChain ChatModel 集成
 - ✅ Skill 注册中心
 - ☐ LLM fallback 降级 / pricing 计费
-- ☐ Embedding / 多模态
+- ✅ Embedding 文本向量化
+- ✅ 图文多模态（URL / Base64）
 - ☐ Prompt 模板与版本管理
 - ☐ RAG 检索链路
 - ☐ Agent / Workflow 编排
