@@ -21,6 +21,7 @@ from app.exceptions import (
 
 llm_instances: dict[str, openai.AsyncOpenAI] = {}
 langchain_models: dict[str, Any] = {}
+provider_configs: dict[str, LlmProviderConfig] = {}
 default_provider_name: str = ""
 # LangSmith 追踪配置（init_llm 注入，供 langchain_tracing_context 请求级读取）；
 # 下划线前缀表「模块私有实现细节」，非业务实体命名，符合命名规范排除项。
@@ -36,6 +37,7 @@ def init_llm(settings: LlmSettings) -> None:
     global default_provider_name, _langsmith_config
     llm_instances.clear()
     langchain_models.clear()
+    provider_configs.clear()
     default_provider_name = settings.default_provider
 
     # LangSmith 追踪：缓存配置 + 按开关设全局环境变量（关则什么都不做）
@@ -51,6 +53,7 @@ def init_llm(settings: LlmSettings) -> None:
                 timeout=cfg.timeout,
                 max_retries=cfg.max_retries,
             )
+            provider_configs[name] = cfg
         except Exception as exc:  # noqa: BLE001 —— 单个 Provider 失败不阻断启动
             logger.warning(
                 "LLM 实例初始化失败，已跳过（降级运行）| name={} | {}",
@@ -95,6 +98,18 @@ def get_llm(name: str | None = None) -> openai.AsyncOpenAI:
             errno=LLM_ERRNO_PROVIDER_NOT_FOUND,
         )
     return client
+
+
+def get_provider_config(name: str | None = None) -> tuple[str, LlmProviderConfig]:
+    """获取已初始化 Provider 的名称与配置。"""
+    target = resolve_name(name)
+    cfg = provider_configs.get(target)
+    if cfg is None:
+        raise BizException(
+            f"LLM Provider 配置未初始化: {target}",
+            errno=LLM_ERRNO_NOT_INITIALIZED,
+        )
+    return target, cfg
 
 
 
@@ -249,6 +264,7 @@ async def close_llm() -> None:
 
     llm_instances.clear()
     langchain_models.clear()
+    provider_configs.clear()
     default_provider_name = ""
     _langsmith_config = None
     if errors:

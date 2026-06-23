@@ -169,6 +169,8 @@ class LlmProviderConfig(BaseModel):
     base_url: str  # OpenAI 兼容端点 URL（如 https://api.openai.com/v1、https://api.deepseek.com/v1）
     api_key: SecretStr = SecretStr("")  # API Key（敏感，仅环境变量注入，不写 yaml）
     default_model: str  # 该 Provider 默认模型名（如 gpt-4o-mini / deepseek-chat / qwen-plus / claude-3-5-sonnet-20241022）
+    embedding_model: str | None = None  # Embedding 模型；为空表示未声明该能力
+    multimodal_model: str | None = None  # 图文理解模型；为空表示未声明该能力
     timeout: float = 60.0  # 单次调用超时秒（透传 openai SDK timeout 参数）
     max_retries: int = 2  # openai SDK 内置重试次数（自动处理 429/5xx 指数退避，无需自写重试）
 

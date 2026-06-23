@@ -8,11 +8,39 @@ import openai
 from fastapi import APIRouter, Query, Request
 
 from app.core.config import get_settings
+from app.core.llm.embedding import embed
 from app.core.llm.gateway import get_langchain_llm, get_llm, langchain_tracing_context
+from app.core.llm.multimodal import analyze_images
 from app.exceptions import BizException, LLM_ERRNO_CALL_FAILED
+from app.schemas.llm import EmbeddingTestRequest, MultimodalTestRequest
 from app.utils.common import ApiResponse
 
 router = APIRouter(prefix="/llm", tags=["llm"])
+
+
+@router.post("/embeddings/test")
+async def test_embeddings(request_body: EmbeddingTestRequest) -> dict[str, Any]:
+    """验证 Provider 的批量文本 Embedding 能力。"""
+    response = await embed(
+        request_body.texts,
+        provider=request_body.provider,
+        model=request_body.model,
+        dimensions=request_body.dimensions,
+    )
+    return ApiResponse.ok(response.model_dump()).to_payload()
+
+
+@router.post("/multimodal/test")
+async def test_multimodal(request_body: MultimodalTestRequest) -> dict[str, Any]:
+    """验证 Provider 的 URL/Base64 图文理解能力。"""
+    response = await analyze_images(
+        request_body.prompt,
+        request_body.images,
+        provider=request_body.provider,
+        model=request_body.model,
+        max_tokens=request_body.max_tokens,
+    )
+    return ApiResponse.ok(response.model_dump()).to_payload()
 
 
 @router.get("/zhipu/test")

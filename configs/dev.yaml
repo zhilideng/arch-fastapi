@@ -62,6 +62,8 @@ llm:
     openai:
       base_url: https://api.openai.com/v1
       default_model: gpt-4o-mini
+      embedding_model: text-embedding-3-small
+      multimodal_model: gpt-4o-mini
     deepseek:
       base_url: https://api.deepseek.com/v1
       default_model: deepseek-chat

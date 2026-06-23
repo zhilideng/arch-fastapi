@@ -89,6 +89,8 @@ LLM_ERRNO_NOT_INITIALIZED = 21001  # LLM 网关未初始化即调用（init_llm 
 LLM_ERRNO_PROVIDER_NOT_FOUND = 21002  # 请求的 Provider 名不在配置 providers 字典中
 LLM_ERRNO_CALL_FAILED = 21003  # 模型调用失败（网络异常 / 超时 / 非 2xx 响应 / 重试用尽）
 LLM_ERRNO_INVALID_RESPONSE = 21004  # 响应解析失败（结构异常 / 必需字段缺失）
+LLM_ERRNO_CAPABILITY_NOT_CONFIGURED = 21005  # Provider 未声明请求的 AI 能力模型
+LLM_ERRNO_INVALID_INPUT = 21006  # Embedding / 多模态输入不合法或超过安全限制
 
 # ── Skill 错误码（2xxxx 段的 23xxx 子段：skill 注册中心层）──────────────
 # skill 注册中心同属横向基础设施层（core/skills/，与 DB/Redis/LLM 并列），
